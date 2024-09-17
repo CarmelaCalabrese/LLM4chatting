@@ -1,0 +1,28 @@
+<application>
+<name>Stanford_Language</name>
+    <authors>
+        <author email="carmela.calabrese@iit.it">Carmela Calabrese</author>
+    </authors>
+
+    <module>
+		<name>python3</name>
+		<parameters>/workdir/apps/iLLM/iLLM.py --config /workdir/apps/configs/gpt_config.json</parameters>
+		<node>localhost</node>
+	</module>
+
+
+    <!-- Modules connections -->
+    <connection>
+		<from>/speechTranscription_nws/text:o</from>
+		<to>/iLLM/text:i</to>
+		<protocol>fast_tcp</protocol>
+	</connection>
+
+    <connection>
+		<from>/iLLM/text:o</from>
+		<to>/speechTranscription_nws/text:i</to>
+		<protocol>fast_tcp</protocol>
+	</connection>
+
+
+</application>

@@ -1,0 +1,8 @@
+{"model_name": "gpt35-turbo16k-v0613",
+"endpoint": "https://test-iit-hsp-instance-20230531.openai.azure.com/",
+"temperature": 0.7,
+"top_p": 0.8,
+"max_length": 60,
+"system_prompt": "You are a humanoid robot called iCub, developped at the Italian Institute of Technology.\n iCub can emulate many of a 6-8 years-old human capacities.\n Manipulation, vision, and hearing are its main capacities.\n"
+}
+  
