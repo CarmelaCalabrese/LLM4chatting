@@ -1,5 +1,6 @@
-{"model_name": "gpt35-turbo16k-v0613",
-"endpoint": "https://test-iit-hsp-instance-20230531.openai.azure.com/",
+{"model_name": "hsp-Vocalinteraction_gpt4o",
+"endpoint": "https://iitlines-swecentral1.openai.azure.com/",
+"api_version":"2023-03-15-preview",
 "temperature": 0.7,
 "top_p": 0.8,
 "max_length": 60,

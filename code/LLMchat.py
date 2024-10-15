@@ -20,11 +20,6 @@ class LLMchat(yarp.RFModule):
         self.LLMchat_output_port = yarp.BufferedPortBottle()
         self.LLMchat_output_port.open(self.LLMchat_output_portName)
 
-        self.LLMchat_rpc_portName = "/LLMchat/rpc:i"
-        self.LLMchat_rpc_port = yarp.Port()
-        self.LLMchat_rpc_port.open(self.LLMchat_rpc_portName)
-        self.attach(self.LLMchat_rpc_port)
-
         self.config_path = rf.check("config", yarp.Value("")).asString()
         if not self.config_path:
             print("Error: config file path is missing")
@@ -41,7 +36,7 @@ class LLMchat(yarp.RFModule):
         self.azureOpenAI_client = AzureOpenAI(
             azure_endpoint = self.config['endpoint'], 
             api_key=os.getenv("AZURE_API_KEY"),
-            api_version="2023-07-01-preview"
+            api_version=self.config['api_version']
             )
         self.model = self.config['model_name']
         self.temperature = self.config['temperature']
@@ -53,24 +48,8 @@ class LLMchat(yarp.RFModule):
             {"role": "system", "content": self.character},
             ]
 
-        self.status = 'idle'
-
         return True
-    
-
-    def respond(self, command, reply):
-        if command.get(0).asString()=='status':
-            reply.addString(self.status)
-        elif command.get(0).asString()=='reset':
-            print('received command RESET')
-            self.reset()
-            reply.addString('LLM history reset')
-        elif command.get(0).asString() == 'quit':
-            print('received command QUIT')
-            self.close()
-            reply.addString('Quit command sent')
-        return True
-    
+        
 
     def _query_llm(self, messages):
         response = ""
@@ -103,7 +82,6 @@ class LLMchat(yarp.RFModule):
             skip_exec = True
 
         if not skip_exec:
-            self.status = 'generating'
             print("💬 Human: "+ text_input)
             self.messages.append({"role": "user", "content": text_input})
 
@@ -115,7 +93,7 @@ class LLMchat(yarp.RFModule):
 
             self.messages.append(response.choices[0].message)
             if (response.choices[0].message.content is not None):
-                print("🤖💭 iCub: " + response.choices[0].message.content +'\n')
+                print("🤖💭 ergoCub: " + response.choices[0].message.content +'\n')
 
             bot = self.LLMchat_output_port.prepare()
             bot.clear()
@@ -139,14 +117,12 @@ class LLMchat(yarp.RFModule):
     def close(self):
         self.LLMchat_input_port.close()
         self.LLMchat_output_port.close()
-        self.LLMchat_rpc_port.close()
         return True
     
     
     def interruptModule(self):
         self.LLMchat_input_port.interrupt()
         self.LLMchat_output_port.interrupt()
-        self.LLMchat_rpc_port.interrupt()
         return True
     
 #########################################333
