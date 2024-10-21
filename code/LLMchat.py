@@ -4,22 +4,39 @@ import sys
 import time
 import json
 import os.path
+import importlib
+import inspect
 from openai import AzureOpenAI
 
 
 class LLMchat(yarp.RFModule):
 
     def configure(self, rf) :
+        self.period = 1/30
 
-        self.period = 0.1
-        self.LLMchat_input_portName = "/LLMchat/text:i"
-        self.LLMchat_input_port = yarp.BufferedPortBottle()
-        self.LLMchat_input_port.open(self.LLMchat_input_portName)
+        self.agent_text_portName = "/agent/text:i"
+        self.agent_text_port = yarp.BufferedPortBottle()
+        self.agent_text_port.open(self.agent_text_portName)
 
-        self.LLMchat_output_portName = "/LLMchat/text:o"
-        self.LLMchat_output_port = yarp.BufferedPortBottle()
-        self.LLMchat_output_port.open(self.LLMchat_output_portName)
+        self.agent_output_portName = "/agent/text:o"
+        self.agent_output_port = yarp.BufferedPortBottle()
+        self.agent_output_port.open(self.agent_output_portName)
 
+        # Open RPC client ports
+        self.client_action_rpc_port = yarp.RpcClient()
+        self.client_action_rpc_port.open("/client_action_rpc")  # Name of the local port
+
+        # if not yarp.Network.connect("/client_action_rpc", "/server_rpc"):
+        #     print("Error connecting to /server port")
+        #     exit()
+
+        self.client_emotion_rpc_port = yarp.RpcClient()
+        self.client_emotion_rpc_port.open("/client_emotion_rpc")  # Name of the local port
+
+        # if not yarp.Network.connect("/client_emotion_rpc", "/server_rpc"):
+        #     print("Error connecting to /server port")
+        #     exit()
+        
         self.config_path = rf.check("config", yarp.Value("")).asString()
         if not self.config_path:
             print("Error: config file path is missing")
@@ -47,9 +64,9 @@ class LLMchat(yarp.RFModule):
         self.messages = [
             {"role": "system", "content": self.character},
             ]
-
-        return True
         
+        return True
+               
 
     def _query_llm(self, messages):
         response = ""
@@ -59,21 +76,18 @@ class LLMchat(yarp.RFModule):
             top_p = self.top_p,
             max_tokens = self.max_length,
             messages=messages,
-
         )
         return response
 
     
     def updateModule(self):
         
-        bottle = self.LLMchat_input_port.read()
+        bottle = self.agent_text_port.read()
         text_input = ""
         if bottle is not None:
-            for i in range(bottle.size()):
-                message = bottle.get(i).asString()  
-                text_input+=message
-
-        # Optionally, clear the bottle after reading
+           for i in range(bottle.size()):
+               message = bottle.get(i).asString()  # Assuming messages are strings
+               text_input+=message + " "
         bottle.clear()
 
         skip_exec = False
@@ -84,30 +98,24 @@ class LLMchat(yarp.RFModule):
         if not skip_exec:
             print("💬 Human: "+ text_input)
             self.messages.append({"role": "user", "content": text_input})
-
-            start_time = time.time()
             response = self._query_llm(self.messages)
-            end_time = time.time()
-            print(f'Answer generation time: {end_time-start_time}')
-            self.status = 'idle'
-
             self.messages.append(response.choices[0].message)
+
             if (response.choices[0].message.content is not None):
                 print("🤖💭 ergoCub: " + response.choices[0].message.content +'\n')
 
-            bot = self.LLMchat_output_port.prepare()
+            bot = self.agent_output_port.prepare()
             bot.clear()
             bot.addString(response.choices[0].message.content)
-            self.LLMchat_output_port.write()
+            self.agent_output_port.write()
     
         return True
 
-    def reset(self):
+    def reset(self): 
         self.messages = [
             {"role": "system", "content": self.character},
         ]
         print(f"📝 Message history reset.")
-        return True
 
 
     def getPeriod(self):
@@ -115,14 +123,18 @@ class LLMchat(yarp.RFModule):
     
         
     def close(self):
-        self.LLMchat_input_port.close()
-        self.LLMchat_output_port.close()
+        self.agent_text_port.close()
+        self.client_action_rpc_port.close()
+        self.client_emotion_rpc_port.close()
+        self.agent_output_port.close()
         return True
     
     
     def interruptModule(self):
-        self.LLMchat_input_port.interrupt()
-        self.LLMchat_output_port.interrupt()
+        self.agent_text_port.interrupt()
+        self.client_action_rpc_port.interrupt()
+        self.client_emotion_rpc_port.interruption()
+        self.agent_output_port()
         return True
     
 #########################################333
@@ -137,6 +149,3 @@ if __name__ == '__main__':
     rf.configure(sys.argv)
     mod.runModule(rf)
     yarp.Network.fini()
-
-
-
